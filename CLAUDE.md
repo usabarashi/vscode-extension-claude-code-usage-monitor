@@ -1,100 +1,158 @@
-# VSCode Extension: CC Usage Monitor
+# Claude Code Usage Monitor - Development Guide
 
-## Project Overview
+## Overview
 
-A VSCode extension for real-time monitoring of Claude Code usage and rate limit information. This extension helps developers avoid work interruptions due to token limits and enables efficient utilization of Claude Code.
+A VSCode extension for real-time Claude Code usage monitoring with automatic plan detection, local timezone support, and intelligent rate limit alerts.
 
-## Core Requirements
+## Architecture
 
-### Key Information to Display
+### Module Structure
+```
+src/
+├── types.ts                # Core type definitions
+├── extension.ts            # VSCode integration & lifecycle
+├── rateLimitManager.ts     # Rate limit calculation & display
+├── blockCalculator.ts      # 5-hour rolling window algorithm
+├── planConfig.ts           # Auto plan detection (Pro/Max5x/Max20x)
+├── claudeDataParser.ts     # Data orchestration & validation
+├── fileFormatParsers.ts    # Legacy/modern JSONL parsers
+├── projectManager.ts       # Project directory discovery
+├── usageAnalyzer.ts        # Usage filtering & analysis
+├── costCalculator.ts       # Claude API pricing
+└── errorHandler.ts         # Structured error handling
+```
 
-1. **Rate Limit Reset Time**
-   - Scheduled end time of the 5-hour window
-   - Example: `Next Reset: 15:30`
+### Key Features
+- **Automatic Plan Detection**: Pro/Max5x/Max20x based on usage patterns
+- **Local Timezone Support**: Reset times in user's timezone
+- **Dual Format Support**: Legacy `usage.jsonl` + modern `UUID.jsonl`
+- **Functional Architecture**: TypeScript strict mode with immutable patterns
+- **Zero Configuration**: No manual setup required
 
-2. **Usage Status to Rate Limit**
-   - Current token usage / limit
-   - Usage percentage display
-   - Example: `450,000 / 500,000 tokens (90%)`
+## Development Setup
 
-3. **Supplementary Information**
-   - Time remaining until reset: `2 hours 15 minutes`
-   - Remaining available tokens
-   - Current consumption rate (tokens/minute)
-   - Predicted depletion time at current pace
+### Prerequisites
+```bash
+# Node.js 18+ and npm
+node --version  # v18+
+npm --version   # v9+
+```
 
-### Technical Requirements
+### Installation
+```bash
+git clone https://github.com/usabarashi/vscode-extension-claude-code-usage.git
+cd vscode-extension-claude-code-usage
+npm install
+```
 
-- **Independent Implementation**: No dependency on ccusage CLI tool
-- **Direct Data Access**: Read Claude Code local data (`~/.claude/projects/`)
-- **Real-time Updates**: Live updates through file monitoring
-- **Lightweight**: Performance-focused, avoiding external process execution
+### Development Workflow
+```bash
+# Compile TypeScript
+npm run compile
 
-### UI Requirements
+# Watch mode (auto-compile)
+npm run watch
 
-#### Status Bar Display
-- Concise usage status: `⏰ 85% | Reset: 15:30`
-- Color coding by warning level:
-  - Green: 0-70% usage
-  - Yellow: 70-90% usage
-  - Red: 90-100% usage
-- Click to open detailed panel
+# Package extension
+npm run package
 
-#### Detailed Webview Panel
-- Progress bar visualization of usage
-- Detailed session information
-- Real-time usage graphs
-- Hourly usage pattern display
+# Debug in VSCode
+# Press F5 to launch Extension Development Host
+```
 
-## Understanding Claude Code Session System
+## CI/CD Pipeline
 
-### What is a Session
-- Functions as a **5-hour rolling window**
-- Session starts when the first message is sent
-- Resets exactly 5 hours after session start
-- Based on actual usage start time, not fixed clock times
+### GitHub Actions Workflows
 
-### Rate Limit Mechanism
-- Upper limit on total token usage during session period
-- No new requests allowed until session end when limit is reached
-- Limit values vary by model and plan
+#### Build Workflow (`.github/workflows/build.yml`)
+**Triggers**: Push to main/develop, Pull Requests
+```yaml
+- TypeScript compilation verification
+- VSIX package testing
+- Artifacts saved only for main branch (30 days retention)
+```
+
+#### Release Workflow (`.github/workflows/release.yml`)
+**Triggers**: Version tags (`v*.*.*`)
+```yaml
+- Automatic VSIX generation
+- GitHub Releases creation
+- Release notes auto-generation
+- Permanent artifact storage
+```
+
+### Release Process
+```bash
+# 1. Version bump
+npm version patch  # or minor/major
+
+# 2. Push tags
+git push origin --tags
+
+# 3. GitHub Actions automatically:
+#    - Builds VSIX file
+#    - Creates GitHub Release
+#    - Publishes downloadable artifacts
+```
 
 ## Technical Specifications
 
-### Data Source
-- **Location**: JSONL files under `~/.claude/projects/`
-- **Content**: Timestamps, token counts, cost information, model types
-- **Format**: One JSON object per line per request
+### Plan Detection Algorithm
+- **Pro Plan**: 500K tokens/5h → Auto-detected when usage ≤ 500K
+- **Max 5x Plan**: 2.5M tokens/5h → Auto-detected when 500K < usage ≤ 2.5M
+- **Max 20x Plan**: 10M tokens/5h → Auto-detected when usage > 2.5M
 
-### Core Functions
-1. **Session Detection**: Identify first request timestamp
-2. **5-Hour Window Calculation**: Aggregate usage from 5 hours ago to now
-3. **Rate Limit Calculation**: Calculate usage/limit ratio
-4. **Reset Time Prediction**: Session start + 5 hours
+### Data Flow
+1. **Project Discovery**: Scan `~/.claude/projects/*/`
+2. **Format Detection**: Parse legacy/modern JSONL files
+3. **Block Calculation**: 5-hour rolling window (local timezone)
+4. **Plan Detection**: Automatic based on peak usage
+5. **Status Display**: `$(terminal) Pro 6% | Reset: 16:00`
 
-### Update Frequency
-- Status Bar: 1-minute intervals
-- Webview Panel: 30-second intervals
-- Immediate updates on usage change detection
+### Status Bar Integration
+- **Format**: `{Plan} {Percentage}% | Reset: {LocalTime}`
+- **Colors**: Green (0-70%) → Yellow (70-90%) → Red (90%+)
+- **Update**: Every 60 seconds
+- **Commands**: `claude-code-usage.showDetails`, `claude-code-usage.refresh`
 
-## Development Priorities
+## Testing
 
-1. **Phase 1: Data Foundation**
-   - Claude Code data file reading functionality
-   - Session detection and 5-hour window calculation engine
-   - Rate limit status determination logic
+### Manual Testing
+```bash
+# 1. Install extension in VSCode
+# 2. Use Claude Code to generate data
+# 3. Verify status bar display
+# 4. Test plan auto-detection
+# 5. Validate timezone handling
+```
 
-2. **Phase 2: Basic UI**
-   - Status bar display functionality
-   - Basic command registration
+### Compatibility Testing
+- **Platform**: macOS, Linux (Windows not supported - Claude Code limitation)
+- **VSCode**: 1.74.0+
+- **Claude Plans**: Pro, Max 5x, Max 20x
 
-3. **Phase 3: Advanced Features**
-   - Webview detailed panel implementation
-   - Real-time updates and file monitoring
-   - Warning and notification features
+## Deployment
 
-## Expected Benefits
+### Distribution Methods
+1. **GitHub Releases**: Automated VSIX distribution
+2. **Manual Installation**: Download + "Install from VSIX"
+3. **Development**: F5 debugging in Extension Development Host
 
-- **Prevention of Work Interruption**: Early warning before rate limit reached
-- **Efficient Work Planning**: Visualization of remaining time and usage
-- **Improved Development Experience**: Transparency in Claude Code usage
+### User Installation
+```bash
+# Users download from GitHub Releases
+# Install via: Extensions → Install from VSIX → Select file
+```
+
+## Claude Code Integration
+
+### Data Sources
+- **Path**: `~/.claude/projects/*/`
+- **Formats**: `usage.jsonl` (legacy) + `{UUID}.jsonl` (modern)
+- **Tokens**: Input + Output only (excludes cache tokens)
+
+### Platform Limitations
+- **Supported**: macOS, Linux
+- **Unsupported**: Windows (Claude Code not available)
+
+This extension provides seamless Claude Code usage monitoring with zero configuration and intelligent automation.
