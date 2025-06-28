@@ -1,0 +1,42 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Compile TypeScript
+      run: npm run compile
+      
+    - name: Install VSCE
+      run: npm install -g @vscode/vsce
+      
+    - name: Package extension (test)
+      run: vsce package --out "claude-code-usage-monitor-dev.vsix"
+      
+    # Only save artifacts for main branch (not for PRs)
+    - name: Upload development build
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: vsix-dev-build
+        path: "claude-code-usage-monitor-dev.vsix"
+        retention-days: 30
