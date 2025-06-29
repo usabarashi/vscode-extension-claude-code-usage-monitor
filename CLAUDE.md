@@ -1,158 +1,141 @@
 # Claude Code Usage Monitor - Development Guide
 
-## Overview
+A VSCode extension for real-time Claude Code usage monitoring with intelligent baseline tracking and Facade architecture pattern.
 
-A VSCode extension for real-time Claude Code usage monitoring with automatic plan detection, local timezone support, and intelligent rate limit alerts.
+## Architecture Overview
 
-## Architecture
+### Facade Pattern Implementation
+The extension uses a **Facade Pattern** with `extension.ts` as the central coordinator managing all core modules and data flow.
 
-### Module Structure
 ```
 src/
-├── types.ts                # Core type definitions
-├── extension.ts            # VSCode integration & lifecycle
-├── rateLimitManager.ts     # Rate limit calculation & display
-├── blockCalculator.ts      # 5-hour rolling window algorithm
-├── planConfig.ts           # Auto plan detection (Pro/Max5x/Max20x)
-├── claudeDataParser.ts     # Data orchestration & validation
-├── fileFormatParsers.ts    # Legacy/modern JSONL parsers
-├── projectManager.ts       # Project directory discovery
-├── usageAnalyzer.ts        # Usage filtering & analysis
-├── costCalculator.ts       # Claude API pricing
-└── errorHandler.ts         # Structured error handling
+├── extension.ts                   # 🏛️ Unified Facade + VSCode Entry Point
+├── core/                          # ⚙️ Business Logic Layer (Independent)
+│   ├── claudeDataParser.ts        # Data parsing (legacy + modern JSONL)
+│   ├── blockCalculator.ts         # 5-hour session block algorithm
+│   ├── usageBaselineCalculator.ts # Statistical baseline analysis
+│   ├── usageCalculator.ts         # Token aggregation utilities
+│   └── projectManager.ts          # Cross-platform path discovery
+├── ui/                            # 🎨 UI Display Layer
+│   └── statusBarFormatter.ts      # Pure formatting functions
+├── types.ts                       # 📋 Shared type definitions
+├── errorHandler.ts                # 🚨 Error handling utilities
+└── windowCalculator.ts            # ⏰ Time calculation utilities
 ```
 
-### Key Features
-- **Automatic Plan Detection**: Pro/Max5x/Max20x based on usage patterns
-- **Local Timezone Support**: Reset times in user's timezone
-- **Dual Format Support**: Legacy `usage.jsonl` + modern `UUID.jsonl`
-- **Functional Architecture**: TypeScript strict mode with immutable patterns
-- **Zero Configuration**: No manual setup required
+## Data Flow Architecture
 
-## Development Setup
+```
+┌────────────────────────────────────────────────────────────┐
+│                        FACADE PATTERN                      │
+│                         extension.ts                       │
+│              ️ Central Coordinator & VSCode Integration     │
+└────────────────────┬───────────────────────────┬───────────┘
+                     │                           │
+          ┌─────────────────────┐      ┌─────────────────────┐
+          │    CORE MODULES     │      │     UI LAYER        │
+          │   (Independent)     │      │  (Pure Functions)   │
+          └─────────────────────┘      └─────────────────────┘
+                     │                           │
+    ┌────────────────┼────────────────┐          │
+    │                │                │          │
+    ▼                ▼                ▼          ▼
+┌─────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│~/.claude│─▶│claudeData   │─▶│blockCalc    │─▶│statusBar    │
+│projects/│  │Parser       │  │ulator       │  │Formatter    │
+│*.jsonl  │  │• Legacy     │  │• 5h windows │  │• Colors     │
+└─────────┘  │• Modern     │  │• UTC align  │  │• Text       │
+             │• Error safe │  │• Pure func  │  │• Tooltips   │
+             └─────────────┘  └─────────────┘  └─────────────┘
+                     │                │
+                     ▼                ▼
+             ┌─────────────┐  ┌─────────────┐
+             │usageBaseline│  │usageCalc    │
+             │Calculator   │  │ulator       │
+             │• Statistics │  │• Token      │
+             │• IQR method │  │  aggregation│
+             │• Confidence │  │• Pure func  │
+             └─────────────┘  └─────────────┘
+```
 
-### Prerequisites
+## Key Implementation Features
+
+### 🏗️ Module Independence
+**Core Modules**: Zero interdependencies, called only by Facade
+- ✅ `claudeDataParser.ts` - No external core dependencies
+- ✅ `blockCalculator.ts` - Pure functions, no side effects
+- ✅ `usageBaselineCalculator.ts` - Statistical analysis only
+- ✅ `usageCalculator.ts` - Simple token aggregation
+- ✅ `projectManager.ts` - Cross-platform path resolution
+
+### 🎯 Facade Coordination
+**extension.ts** manages the complete data pipeline:
+```typescript
+// Facade orchestrates: Data → Blocks → Baseline → UI
+const parsedData = await parseAllUsageData();
+const multiSessionBlock = createMultiSessionBlock(parsedData.records, new Date(), parsedData.error);
+const status = await createUsageStatusFromMultiSession(multiSessionBlock);
+```
+
+### 📊 Statistical Baseline Algorithm
+Instead of hardcoded rate limits, uses intelligent baseline calculation:
+- **30-day Analysis**: Historical usage patterns from completed blocks
+- **IQR Outlier Removal**: Statistical data cleaning
+- **Confidence Scoring**: High/Medium/Low based on data quality
+- **Active Block Exclusion**: Current session not included in baseline
+
+### 🎨 UI Layer Separation
+**statusBarFormatter.ts** provides pure formatting functions:
+- Color-coded status: 🟢 <70% → 🟡 70-99% → 🔴 100%+
+- Format: `$(terminal) 85% | 45K avg | Reset: 16:00`
+- Comprehensive tooltips with usage breakdown
+
+## Development Workflow
+
+### Building & Testing
 ```bash
-# Node.js 18+ and npm
-node --version  # v18+
-npm --version   # v9+
+npm install           # Install dependencies
+npm run compile       # Build TypeScript
+npm run package       # Create VSIX file
+F5                    # Debug in VSCode Extension Development Host
 ```
 
-### Installation
-```bash
-git clone https://github.com/usabarashi/vscode-extension-claude-code-usage.git
-cd vscode-extension-claude-code-usage
-npm install
-```
+### Code Quality
+- **JSDoc Documentation**: Comprehensive function and module documentation
+- **TypeScript Strict**: Full type safety with strict mode
+- **Pure Functions**: No side effects in core modules
+- **Error Handling**: Graceful degradation with user feedback
 
-### Development Workflow
-```bash
-# Compile TypeScript
-npm run compile
+### Directory Structure Benefits
+- **Testability**: Independent modules easy to unit test
+- **Maintainability**: Clear separation of concerns
+- **Scalability**: New features added without affecting existing modules
+- **Security**: No personal information in codebase
 
-# Watch mode (auto-compile)
-npm run watch
-
-# Package extension
-npm run package
-
-# Debug in VSCode
-# Press F5 to launch Extension Development Host
-```
-
-## CI/CD Pipeline
-
-### GitHub Actions Workflows
-
-#### Build Workflow (`.github/workflows/build.yml`)
-**Triggers**: Push to main/develop, Pull Requests
-```yaml
-- TypeScript compilation verification
-- VSIX package testing
-- Artifacts saved only for main branch (30 days retention)
-```
-
-#### Release Workflow (`.github/workflows/release.yml`)
-**Triggers**: Version tags (`v*.*.*`)
-```yaml
-- Automatic VSIX generation
-- GitHub Releases creation
-- Release notes auto-generation
-- Permanent artifact storage
-```
-
-### Release Process
-```bash
-# 1. Version bump
-npm version patch  # or minor/major
-
-# 2. Push tags
-git push origin --tags
-
-# 3. GitHub Actions automatically:
-#    - Builds VSIX file
-#    - Creates GitHub Release
-#    - Publishes downloadable artifacts
-```
-
-## Technical Specifications
-
-### Plan Detection Algorithm
-- **Pro Plan**: 500K tokens/5h → Auto-detected when usage ≤ 500K
-- **Max 5x Plan**: 2.5M tokens/5h → Auto-detected when 500K < usage ≤ 2.5M
-- **Max 20x Plan**: 10M tokens/5h → Auto-detected when usage > 2.5M
-
-### Data Flow
-1. **Project Discovery**: Scan `~/.claude/projects/*/`
-2. **Format Detection**: Parse legacy/modern JSONL files
-3. **Block Calculation**: 5-hour rolling window (local timezone)
-4. **Plan Detection**: Automatic based on peak usage
-5. **Status Display**: `$(terminal) Pro 6% | Reset: 16:00`
-
-### Status Bar Integration
-- **Format**: `{Plan} {Percentage}% | Reset: {LocalTime}`
-- **Colors**: Green (0-70%) → Yellow (70-90%) → Red (90%+)
-- **Update**: Every 60 seconds
-- **Commands**: `claude-code-usage.showDetails`, `claude-code-usage.refresh`
-
-## Testing
-
-### Manual Testing
-```bash
-# 1. Install extension in VSCode
-# 2. Use Claude Code to generate data
-# 3. Verify status bar display
-# 4. Test plan auto-detection
-# 5. Validate timezone handling
-```
-
-### Compatibility Testing
-- **Platform**: macOS, Linux (Windows not supported - Claude Code limitation)
-- **VSCode**: 1.74.0+
-- **Claude Plans**: Pro, Max 5x, Max 20x
-
-## Deployment
-
-### Distribution Methods
-1. **GitHub Releases**: Automated VSIX distribution
-2. **Manual Installation**: Download + "Install from VSIX"
-3. **Development**: F5 debugging in Extension Development Host
-
-### User Installation
-```bash
-# Users download from GitHub Releases
-# Install via: Extensions → Install from VSIX → Select file
-```
-
-## Claude Code Integration
+## Usage Monitoring
 
 ### Data Sources
-- **Path**: `~/.claude/projects/*/`
-- **Formats**: `usage.jsonl` (legacy) + `{UUID}.jsonl` (modern)
+- **Path**: `~/.claude/projects/*/` (auto-discovery)
+- **Formats**: Legacy `usage.jsonl` + Modern `{UUID}.jsonl`
 - **Tokens**: Input + Output only (excludes cache tokens)
 
-### Platform Limitations
-- **Supported**: macOS, Linux
-- **Unsupported**: Windows (Claude Code not available)
+### Session Blocks
+- **Duration**: 5-hour rolling windows (Claude's algorithm)
+- **Alignment**: UTC hour boundaries
+- **Activity**: Shows current active block only
+- **Reset**: Local timezone display
 
-This extension provides seamless Claude Code usage monitoring with zero configuration and intelligent automation.
+### Status Display
+- **Update Frequency**: 60-second automatic refresh
+- **Click Action**: Detailed usage information modal
+- **Error States**: Informative messages with suggestions
+- **Commands**: Manual refresh and detail view
+
+## Platform Compatibility
+
+- **Supported**: macOS, Linux
+- **Unsupported**: Windows (Claude Code limitation)
+- **VSCode**: 1.74.0+
+- **Architecture**: Independent of Claude Code versions
+
+This implementation provides efficient, maintainable Claude Code usage monitoring with a clean architecture pattern and intelligent baseline analysis.

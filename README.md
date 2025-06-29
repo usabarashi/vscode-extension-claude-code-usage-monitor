@@ -1,72 +1,84 @@
 # Claude Code Usage Monitor
 
-A VSCode extension that monitors your Claude Code usage and rate limits in real-time with automatic plan detection.
+A VSCode extension for monitoring Claude Code token usage with smart baseline tracking and real-time status display.
 
-## ✨ Features
+## ✨ What It Does
 
-- **Real-time Monitoring**: Track your Claude Code token usage as you work
-- **Automatic Plan Detection**: Auto-detects Pro, Max 5x, or Max 20x plans
-- **Local Timezone Support**: Reset times shown in your local timezone
-- **Rate Limit Alerts**: Visual warnings when approaching rate limits
-- **Smart Status Bar**: Shows plan, usage percentage, and reset time
-- **No Configuration**: Works automatically without manual setup
+Keep track of your Claude Code usage directly in VSCode:
+- **Real-time Monitoring**: See current usage percentage in the status bar
+- **Smart Baseline**: Learn your typical usage patterns automatically
+- **Usage Alerts**: Visual warnings when usage is higher than usual
+- **Local Timezone**: Reset times displayed in your timezone
+- **Zero Setup**: Works immediately after installation
 
-## 🎯 What You'll See
+## 📊 Status Bar Display
 
-The extension adds a status bar item showing:
+The extension shows your usage status in the VSCode status bar:
+
 ```
-🖥️ Pro 6% | Reset: 16:00
+$(terminal) 85% | 45K avg | Reset: 16:00
 ```
 
-- **Pro**: Your detected Claude Code plan (Pro/Max5x/Max20x)
-- **6%**: Current usage percentage of your rate limit
-- **Reset: 16:00**: When your rate limit window resets (local time)
-- **Color coding**: 🟢 Green (safe) → 🟡 Yellow (warning) → 🔴 Red (critical)
+- **85%**: Current usage relative to your typical patterns
+- **45K avg**: Your average usage baseline (automatically calculated)
+- **Reset: 16:00**: When the current 5-hour window resets (local time)
+- **Colors**: 🟢 Green (<70%) → 🟡 Yellow (70-99%) → 🔴 Red (100%+)
+
+Click the status bar for detailed information:
+- Current token usage breakdown
+- Usage level (Low/Normal/High/Critical)
+- Baseline confidence and consumption rate
+- Time until reset
 
 ## 🚀 Installation
 
-Since this extension is not published on the VS Code Marketplace, install it directly from GitHub:
-
-### Option 1: Download VSIX (Recommended)
-1. Go to the [Releases page](../../releases)
-2. Download the latest `.vsix` file
-3. In VS Code, press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
-4. Type "Extensions: Install from VSIX"
-5. Select the downloaded `.vsix` file
+### Option 1: Download Release
+1. Go to [Releases](../../releases) and download the latest `.vsix` file
+2. In VSCode: `Ctrl+Shift+P` → "Extensions: Install from VSIX"
+3. Select the downloaded file
+4. The extension starts working automatically
 
 ### Option 2: Build from Source
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/usabarashi/vscode-extension-claude-code-usage.git
-   cd vscode-extension-claude-code-usage
-   ```
+```bash
+git clone https://github.com/usabarashi/vscode-extension-claude-code-usage-monitor.git
+cd vscode-extension-claude-code-usage-monitor
+npm install
+npm run compile
+npm run package
+```
+Then install the generated `.vsix` file in VSCode.
 
-2. Install dependencies and compile:
-   ```bash
-   npm install
-   npm run compile
-   ```
+## 🧠 How It Works
 
-3. Package the extension:
-   ```bash
-   npx vsce package
-   ```
+### Smart Baseline Calculation
+- Analyzes your past 30 days of Claude Code usage
+- Groups usage into 5-hour blocks (matching Claude's rate limiting)
+- Calculates statistical average with outlier removal
+- Excludes current active session to prevent bias
+- Provides confidence levels based on data quality
 
-4. Install the generated `.vsix` file in VS Code
+### Usage Monitoring
+- Reads Claude Code usage data from `~/.claude/projects/`
+- Supports both legacy and modern JSONL formats
+- Tracks 5-hour session windows with UTC alignment
+- Updates every 60 seconds for real-time accuracy
+- Displays percentage relative to your personal baseline
 
 ## 🌍 Platform Support
 
-**Supported Platforms:**
-- ✅ **macOS**: Full support
-- ✅ **Linux**: Full support
-- ❌ **Windows**: Not supported (Claude Code is not available on Windows)
+- ✅ **macOS**: Fully supported
+- ✅ **Linux**: Fully supported
+- ❌ **Windows**: Not supported (Claude Code limitation)
 
-**Note**: Claude Code itself is only available on macOS and Linux. This extension cannot work on Windows as Claude Code doesn't run on that platform.
+**Requirements**:
+- VSCode 1.74.0 or later
+- Claude Code installed and used at least once
+- Node.js (for building from source)
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Note**: This extension is unofficial and not affiliated with Anthropic or Claude Code.
+**Note**: This is an unofficial extension not affiliated with Anthropic or Claude Code. It provides usage monitoring based on locally stored Claude Code usage data.

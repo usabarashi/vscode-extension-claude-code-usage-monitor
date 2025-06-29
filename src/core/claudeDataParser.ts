@@ -1,101 +1,43 @@
+/**
+ * Claude Data Parser - Core Module (Independent)
+ * 
+ * Parses Claude Code usage data from both legacy and modern JSONL formats.
+ * Handles multi-project environments and provides comprehensive error reporting.
+ * 
+ * **Supported Formats:**
+ * - Legacy: `usage.jsonl` (older Claude Code versions)
+ * - Modern: `{UUID}.jsonl` (current Claude Code sessions)
+ * 
+ * **Data Flow:**
+ * 1. Discover all project directories
+ * 2. Parse legacy and modern format files
+ * 3. Aggregate usage records with metadata
+ * 4. Provide detailed error reporting for debugging
+ * 
+ * @module ClaudeDataParser
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { ClaudeUsageRecord, ParsedUsageData, ParseError } from '../types';
+import { getClaudeProjectsPath } from './projectManager';
 
 /**
- * Represents a single Claude Code usage record.
- */
-export interface ClaudeUsageRecord {
-    timestamp: string;
-    input_tokens: number;
-    output_tokens: number;
-    cache_creation_tokens: number;
-    cache_read_tokens: number;
-    model: string;
-    cost: number;
-    sessionId?: string;
-    requestId?: string;
-}
-
-/**
- * Represents the result of parsing all Claude Code usage data.
- */
-export interface ParsedUsageData {
-    records: ClaudeUsageRecord[];
-    totalRecords: number;
-    dateRange: {
-        earliest: Date;
-        latest: Date;
-    };
-    sessionIds: string[];
-}
-
-/** Path to Claude Code projects directory */
-const CLAUDE_PROJECTS_PATH = path.join(os.homedir(), '.claude', 'projects');
-
-/** Claude API pricing in USD per token */
-const CLAUDE_PRICING = {
-    input: 15 / 1_000_000,
-    output: 75 / 1_000_000,
-    cache_creation: 18.75 / 1_000_000,
-    cache_read: 1.5 / 1_000_000
-} as const;
-
-/**
- * Calculates the cost of a Claude usage record based on token usage.
- * @param record - The usage record
- * @returns Cost in USD
- */
-export const calculateCost = (record: ClaudeUsageRecord): number => (
-    record.input_tokens * CLAUDE_PRICING.input +
-    record.output_tokens * CLAUDE_PRICING.output +
-    record.cache_creation_tokens * CLAUDE_PRICING.cache_creation +
-    record.cache_read_tokens * CLAUDE_PRICING.cache_read
-);
-
-/**
- * Gets the total token count for a usage record (all token types).
- * @param record - The usage record
- * @returns Total token count
- */
-export const getTotalTokens = (record: ClaudeUsageRecord): number => 
-    record.input_tokens + record.output_tokens + 
-    record.cache_creation_tokens + record.cache_read_tokens;
-
-/**
- * Filters usage records by time range.
- * @param records - Array of usage records
- * @param startTime - Start of time range (inclusive)
- * @param endTime - End of time range (inclusive)
- * @returns Filtered records within the time range
- */
-export const filterRecordsByTimeRange = (
-    records: ClaudeUsageRecord[], 
-    startTime: Date, 
-    endTime: Date
-): ClaudeUsageRecord[] => 
-    records.filter(record => {
-        const recordTime = new Date(record.timestamp);
-        return recordTime >= startTime && recordTime <= endTime;
-    });
-
-/**
- * Groups usage records by session ID.
- * @param records - Array of usage records
- * @returns Map of session ID to records array
- */
-export const groupRecordsBySession = (records: ClaudeUsageRecord[]): Map<string, ClaudeUsageRecord[]> => 
-    records.reduce((groups, record) => {
-        const sessionKey = record.sessionId || 'unknown';
-        const existing = groups.get(sessionKey) || [];
-        groups.set(sessionKey, [...existing, record]);
-        return groups;
-    }, new Map<string, ClaudeUsageRecord[]>());
-
-/**
- * Parses legacy usage.jsonl files (old Claude Code format).
- * @param filePath - Path to the legacy usage file
- * @returns Array of parsed usage records
+ * PURE FUNCTION: Parses legacy usage.jsonl files (old Claude Code format).
+ * 
+ * Legacy files contain direct usage records in a simpler JSONL format
+ * used by earlier versions of Claude Code.
+ * 
+ * @param {string} filePath - Absolute path to the legacy usage file
+ * @returns {ClaudeUsageRecord[]} Array of parsed usage records
+ * 
+ * @example
+ * ```typescript
+ * const records = parseLegacyUsageFile('/path/to/usage.jsonl');
+ * console.log(`Found ${records.length} legacy records`);
+ * ```
+ * 
+ * @internal
  */
 const parseLegacyUsageFile = (filePath: string): ClaudeUsageRecord[] => {
     try {
@@ -114,7 +56,6 @@ const parseLegacyUsageFile = (filePath: string): ClaudeUsageRecord[] => {
                         cache_creation_tokens: data.cache_creation_tokens || 0,
                         cache_read_tokens: data.cache_read_tokens || 0,
                         model: data.model || 'unknown',
-                        cost: data.cost || 0
                     };
                 } catch (error) {
                     console.warn(`Failed to parse legacy line in ${filePath}:`, error);
@@ -156,8 +97,7 @@ const parseSessionFile = (filePath: string, fileName: string): ClaudeUsageRecord
                             cache_creation_tokens: usage.cache_creation_input_tokens || 0,
                             cache_read_tokens: usage.cache_read_input_tokens || 0,
                             model: data.message.model || 'unknown',
-                            cost: 0,
-                            sessionId: sessionId,
+                                sessionId: sessionId,
                             requestId: data.requestId || data.uuid
                         } as ClaudeUsageRecord;
                     }
@@ -200,16 +140,6 @@ const parseProjectDirectory = (projectPath: string): ClaudeUsageRecord[] => {
     return records;
 };
 
-/**
- * Represents an error that occurred during data parsing.
- * Provides structured error information for user-friendly error handling.
- */
-export interface ParseError {
-    type: 'directory_not_found' | 'file_access_error' | 'data_format_error' | 'unknown_error';
-    message: string;
-    details?: string;
-    suggestion?: string;
-}
 
 /**
  * Parses all Claude Code usage data from the projects directory.
@@ -219,7 +149,8 @@ export interface ParseError {
  */
 export const parseAllUsageData = async (): Promise<ParsedUsageData & { error?: ParseError }> => {
     try {
-        if (!fs.existsSync(CLAUDE_PROJECTS_PATH)) {
+        const claudePath = getClaudeProjectsPath();
+        if (!fs.existsSync(claudePath)) {
             return {
                 records: [],
                 totalRecords: 0,
@@ -228,13 +159,13 @@ export const parseAllUsageData = async (): Promise<ParsedUsageData & { error?: P
                 error: {
                     type: 'directory_not_found',
                     message: 'Claude Code data directory not found',
-                    details: `Expected directory: ${CLAUDE_PROJECTS_PATH}`,
+                    details: `Expected directory: ${claudePath}`,
                     suggestion: 'Please ensure Claude Code is installed and has been used at least once'
                 }
             };
         }
 
-        const projectDirs = fs.readdirSync(CLAUDE_PROJECTS_PATH);
+        const projectDirs = fs.readdirSync(claudePath);
         
         if (projectDirs.length === 0) {
             return {
@@ -256,7 +187,7 @@ export const parseAllUsageData = async (): Promise<ParsedUsageData & { error?: P
         let totalFiles = 0;
 
         for (const projectDir of projectDirs) {
-            const projectPath = path.join(CLAUDE_PROJECTS_PATH, projectDir);
+            const projectPath = path.join(claudePath, projectDir);
             try {
                 if (fs.statSync(projectPath).isDirectory()) {
                     const projectRecords = parseProjectDirectory(projectPath);
@@ -295,7 +226,6 @@ export const parseAllUsageData = async (): Promise<ParsedUsageData & { error?: P
         }
 
         const records = allRecords
-            .map(record => ({ ...record, cost: record.cost || calculateCost(record) }))
             .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
         const sessionIds = [...new Set(allRecords.map(r => r.sessionId).filter((id): id is string => Boolean(id)))];
