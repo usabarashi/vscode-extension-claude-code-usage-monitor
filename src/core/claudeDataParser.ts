@@ -1,19 +1,19 @@
 /**
  * Claude Data Parser - Core Module (Independent)
- * 
+ *
  * Parses Claude Code usage data from both legacy and modern JSONL formats.
  * Handles multi-project environments and provides comprehensive error reporting.
- * 
+ *
  * **Supported Formats:**
  * - Legacy: `usage.jsonl` (older Claude Code versions)
  * - Modern: `{UUID}.jsonl` (current Claude Code sessions)
- * 
+ *
  * **Data Flow:**
  * 1. Discover all project directories
  * 2. Parse legacy and modern format files
  * 3. Aggregate usage records with metadata
  * 4. Provide detailed error reporting for debugging
- * 
+ *
  * @module ClaudeDataParser
  */
 
@@ -23,20 +23,18 @@ import { ClaudeUsageRecord, ParsedUsageData, ParseError } from '../types';
 import { getClaudeProjectsPath } from './projectManager';
 
 /**
- * PURE FUNCTION: Parses legacy usage.jsonl files (old Claude Code format).
- * 
  * Legacy files contain direct usage records in a simpler JSONL format
  * used by earlier versions of Claude Code.
- * 
+ *
  * @param {string} filePath - Absolute path to the legacy usage file
  * @returns {ClaudeUsageRecord[]} Array of parsed usage records
- * 
+ *
  * @example
  * ```typescript
  * const records = parseLegacyUsageFile('/path/to/usage.jsonl');
  * console.log(`Found ${records.length} legacy records`);
  * ```
- * 
+ *
  * @internal
  */
 const parseLegacyUsageFile = (filePath: string): ClaudeUsageRecord[] => {
@@ -77,7 +75,7 @@ const parseLegacyUsageFile = (filePath: string): ClaudeUsageRecord[] => {
  */
 const parseSessionFile = (filePath: string, fileName: string): ClaudeUsageRecord[] => {
     const sessionId = fileName.replace('.jsonl', '');
-    
+
     try {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         return fileContent
@@ -87,7 +85,7 @@ const parseSessionFile = (filePath: string, fileName: string): ClaudeUsageRecord
             .map(line => {
                 try {
                     const data = JSON.parse(line);
-                    
+
                     if (data.type === 'assistant' && data.message?.usage) {
                         const usage = data.message.usage;
                         return {
@@ -97,7 +95,7 @@ const parseSessionFile = (filePath: string, fileName: string): ClaudeUsageRecord
                             cache_creation_tokens: usage.cache_creation_input_tokens || 0,
                             cache_read_tokens: usage.cache_read_input_tokens || 0,
                             model: data.message.model || 'unknown',
-                                sessionId: sessionId,
+                            sessionId: sessionId,
                             requestId: data.requestId || data.uuid
                         } as ClaudeUsageRecord;
                     }
@@ -120,23 +118,23 @@ const parseSessionFile = (filePath: string, fileName: string): ClaudeUsageRecord
  */
 const parseProjectDirectory = (projectPath: string): ClaudeUsageRecord[] => {
     const records: ClaudeUsageRecord[] = [];
-    
+
     try {
         const legacyUsageFile = path.join(projectPath, 'usage.jsonl');
         if (fs.existsSync(legacyUsageFile)) {
             records.push(...parseLegacyUsageFile(legacyUsageFile));
         }
-        
+
         const files = fs.readdirSync(projectPath);
         const sessionRecords = files
             .filter(file => file.endsWith('.jsonl') && file !== 'usage.jsonl')
             .flatMap(file => parseSessionFile(path.join(projectPath, file), file));
-        
+
         records.push(...sessionRecords);
     } catch (error) {
         console.error(`Error parsing project directory ${projectPath}:`, error);
     }
-    
+
     return records;
 };
 
@@ -166,7 +164,7 @@ export const parseAllUsageData = async (): Promise<ParsedUsageData & { error?: P
         }
 
         const projectDirs = fs.readdirSync(claudePath);
-        
+
         if (projectDirs.length === 0) {
             return {
                 records: [],
@@ -192,7 +190,7 @@ export const parseAllUsageData = async (): Promise<ParsedUsageData & { error?: P
                 if (fs.statSync(projectPath).isDirectory()) {
                     const projectRecords = parseProjectDirectory(projectPath);
                     allRecords.push(...projectRecords);
-                    
+
                     // Count files for error rate calculation
                     const files = fs.readdirSync(projectPath);
                     totalFiles += files.filter(f => f.endsWith('.jsonl')).length;
@@ -205,7 +203,7 @@ export const parseAllUsageData = async (): Promise<ParsedUsageData & { error?: P
 
         // Check if we have a high error rate (might indicate format changes)
         const errorRate = totalFiles > 0 ? parseErrors / totalFiles : 0;
-        
+
         if (allRecords.length === 0 && totalFiles > 0) {
             return {
                 records: [],

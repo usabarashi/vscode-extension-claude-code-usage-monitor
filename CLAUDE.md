@@ -1,141 +1,78 @@
 # Claude Code Usage Monitor - Development Guide
 
-A VSCode extension for real-time Claude Code usage monitoring with intelligent baseline tracking and Facade architecture pattern.
+VSCode extension for real-time Claude Code usage monitoring with intelligent baseline tracking.
 
 ## Architecture Overview
 
-### Facade Pattern Implementation
-The extension uses a **Facade Pattern** with `extension.ts` as the central coordinator managing all core modules and data flow.
+### Facade Pattern
+`extension.ts` coordinates all modules via Facade pattern:
 
+```
+Data Parsing → Block Calculation → Baseline Analysis → UI Display
+```
+
+### Directory Structure
 ```
 src/
-├── extension.ts                   # 🏛️ Unified Facade + VSCode Entry Point
-├── core/                          # ⚙️ Business Logic Layer (Independent)
-│   ├── claudeDataParser.ts        # Data parsing (legacy + modern JSONL)
-│   ├── blockCalculator.ts         # 5-hour session block algorithm
-│   ├── usageBaselineCalculator.ts # Statistical baseline analysis
-│   ├── usageCalculator.ts         # Token aggregation utilities
-│   └── projectManager.ts          # Cross-platform path discovery
-├── ui/                            # 🎨 UI Display Layer
-│   └── statusBarFormatter.ts      # Pure formatting functions
-├── types.ts                       # 📋 Shared type definitions
-├── errorHandler.ts                # 🚨 Error handling utilities
-└── windowCalculator.ts            # ⏰ Time calculation utilities
+├── extension.ts          # Facade + VSCode entry point
+├── core/                 # Independent business logic
+│   ├── claudeDataParser.ts
+│   ├── blockCalculator.ts
+│   └── usageBaselineCalculator.ts
+├── ui/
+│   └── statusBarFormatter.ts
+└── types.ts
 ```
 
-## Data Flow Architecture
+## Key Features
 
-```
-┌────────────────────────────────────────────────────────────┐
-│                        FACADE PATTERN                      │
-│                         extension.ts                       │
-│              ️ Central Coordinator & VSCode Integration     │
-└────────────────────┬───────────────────────────┬───────────┘
-                     │                           │
-          ┌─────────────────────┐      ┌─────────────────────┐
-          │    CORE MODULES     │      │     UI LAYER        │
-          │   (Independent)     │      │  (Pure Functions)   │
-          └─────────────────────┘      └─────────────────────┘
-                     │                           │
-    ┌────────────────┼────────────────┐          │
-    │                │                │          │
-    ▼                ▼                ▼          ▼
-┌─────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│~/.claude│─▶│claudeData   │─▶│blockCalc    │─▶│statusBar    │
-│projects/│  │Parser       │  │ulator       │  │Formatter    │
-│*.jsonl  │  │• Legacy     │  │• 5h windows │  │• Colors     │
-└─────────┘  │• Modern     │  │• UTC align  │  │• Text       │
-             │• Error safe │  │• Pure func  │  │• Tooltips   │
-             └─────────────┘  └─────────────┘  └─────────────┘
-                     │                │
-                     ▼                ▼
-             ┌─────────────┐  ┌─────────────┐
-             │usageBaseline│  │usageCalc    │
-             │Calculator   │  │ulator       │
-             │• Statistics │  │• Token      │
-             │• IQR method │  │  aggregation│
-             │• Confidence │  │• Pure func  │
-             └─────────────┘  └─────────────┘
-```
+### Module Independence
+Core modules have zero interdependencies, called only by Facade:
+- `claudeDataParser.ts` - Parses Claude data files
+- `blockCalculator.ts` - 5-hour session block algorithm
+- `usageBaselineCalculator.ts` - Statistical baseline analysis
 
-## Key Implementation Features
+### Statistical Baseline
+Intelligent usage monitoring instead of hardcoded limits:
+- 30-day historical analysis with IQR outlier removal
+- Confidence scoring (High/Medium/Low)
+- Active block exclusion prevents bias
 
-### 🏗️ Module Independence
-**Core Modules**: Zero interdependencies, called only by Facade
-- ✅ `claudeDataParser.ts` - No external core dependencies
-- ✅ `blockCalculator.ts` - Pure functions, no side effects
-- ✅ `usageBaselineCalculator.ts` - Statistical analysis only
-- ✅ `usageCalculator.ts` - Simple token aggregation
-- ✅ `projectManager.ts` - Cross-platform path resolution
-
-### 🎯 Facade Coordination
-**extension.ts** manages the complete data pipeline:
+### Data Pipeline
 ```typescript
-// Facade orchestrates: Data → Blocks → Baseline → UI
 const parsedData = await parseAllUsageData();
-const multiSessionBlock = createMultiSessionBlock(parsedData.records, new Date(), parsedData.error);
+const multiSessionBlock = createMultiSessionBlock(parsedData.records, new Date());
 const status = await createUsageStatusFromMultiSession(multiSessionBlock);
 ```
 
-### 📊 Statistical Baseline Algorithm
-Instead of hardcoded rate limits, uses intelligent baseline calculation:
-- **30-day Analysis**: Historical usage patterns from completed blocks
-- **IQR Outlier Removal**: Statistical data cleaning
-- **Confidence Scoring**: High/Medium/Low based on data quality
-- **Active Block Exclusion**: Current session not included in baseline
+## Development
 
-### 🎨 UI Layer Separation
-**statusBarFormatter.ts** provides pure formatting functions:
-- Color-coded status: 🟢 <70% → 🟡 70-99% → 🔴 100%+
-- Format: `$(terminal) 85% | 45K avg | Reset: 16:00`
-- Comprehensive tooltips with usage breakdown
-
-## Development Workflow
-
-### Building & Testing
+### Build & Test
 ```bash
-npm install           # Install dependencies
-npm run compile       # Build TypeScript
-npm run package       # Create VSIX file
-F5                    # Debug in VSCode Extension Development Host
+npm install && npm run compile
+F5  # Debug in VSCode Extension Host
 ```
 
-### Code Quality
-- **JSDoc Documentation**: Comprehensive function and module documentation
-- **TypeScript Strict**: Full type safety with strict mode
-- **Pure Functions**: No side effects in core modules
-- **Error Handling**: Graceful degradation with user feedback
+### Code Standards
+- TypeScript strict mode with comprehensive JSDoc
+- Pure functions in core modules (no side effects)
+- Independent modules for easy testing
+- Graceful error handling
 
-### Directory Structure Benefits
-- **Testability**: Independent modules easy to unit test
-- **Maintainability**: Clear separation of concerns
-- **Scalability**: New features added without affecting existing modules
-- **Security**: No personal information in codebase
-
-## Usage Monitoring
+## Implementation Details
 
 ### Data Sources
-- **Path**: `~/.claude/projects/*/` (auto-discovery)
-- **Formats**: Legacy `usage.jsonl` + Modern `{UUID}.jsonl`
-- **Tokens**: Input + Output only (excludes cache tokens)
+- Path: `~/.claude/projects/*/` (auto-discovery)
+- Formats: Legacy `usage.jsonl` + Modern `{UUID}.jsonl`
+- Tokens: Input + Output (excludes cache)
 
-### Session Blocks
-- **Duration**: 5-hour rolling windows (Claude's algorithm)
-- **Alignment**: UTC hour boundaries
-- **Activity**: Shows current active block only
-- **Reset**: Local timezone display
+### Session Monitoring
+- 5-hour rolling windows (Claude's algorithm)
+- UTC alignment with local timezone display
+- 60-second refresh cycle
+- Active block detection with boundary conditions
 
-### Status Display
-- **Update Frequency**: 60-second automatic refresh
-- **Click Action**: Detailed usage information modal
-- **Error States**: Informative messages with suggestions
-- **Commands**: Manual refresh and detail view
-
-## Platform Compatibility
-
-- **Supported**: macOS, Linux
-- **Unsupported**: Windows (Claude Code limitation)
-- **VSCode**: 1.74.0+
-- **Architecture**: Independent of Claude Code versions
-
-This implementation provides efficient, maintainable Claude Code usage monitoring with a clean architecture pattern and intelligent baseline analysis.
+### Platform Support
+- Supported: macOS, Linux
+- VSCode 1.74.0+
+- Claude Code: Tested with v1.0.33 (may work with other versions)
