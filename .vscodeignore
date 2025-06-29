@@ -1,0 +1,48 @@
+# Build outputs
+out/test/**
+out/**/*.map
+src/**
+**/*.ts
+
+# Development files
+.vscode/**
+.vscode-test/**
+.gitignore
+.yarnrc
+vsc-extension-quickstart.md
+**/tsconfig.json
+**/tslint.json
+**/.eslintrc.json
+
+# Dependencies
+node_modules/
+.npm/
+
+# Documentation and config files are included by default
+# Only exclude what we don't want in the package
+
+# Test and development
+**/*.test.ts
+**/*.spec.ts
+coverage/
+.nyc_output/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
