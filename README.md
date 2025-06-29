@@ -19,30 +19,67 @@ The extension shows your usage status in the VSCode status bar:
 $(terminal) 85% | 45K avg | Reset: 16:00
 ```
 
-- **Green (0-70%)**: Normal usage levels
-- **Yellow (70-99%)**: Higher than typical usage
-- **Red (100%+)**: Very high usage levels
+- **85%**: Current usage relative to your typical patterns
+- **45K avg**: Your average usage baseline (automatically calculated)
+- **Reset: 16:00**: When the current 5-hour window resets (local time)
+- **Colors**: 🟢 Green (<70%) → 🟡 Yellow (70-99%) → 🔴 Red (100%+)
 - **No active block**: When session has expired
+
+Click the status bar for detailed information:
+- Current token usage breakdown
+- Usage level (Low/Normal/High/Critical)
+- Baseline confidence and consumption rate
+- Time until reset
 
 ## 🚀 Installation
 
-1. Install from VSCode Marketplace
-2. Extension activates automatically
-3. Start using Claude Code to see your usage
+### Option 1: Download Release
+1. Go to [Releases](../../releases) and download the latest `.vsix` file
+2. In VSCode: `Ctrl+Shift+P` → "Extensions: Install from VSIX"
+3. Select the downloaded file
+4. The extension starts working automatically
 
-## 🔧 Recent Fixes
+### Option 2: Build from Source
+```bash
+git clone https://github.com/usabarashi/vscode-extension-claude-code-usage-monitor.git
+cd vscode-extension-claude-code-usage-monitor
+npm install
+npm run compile
+npm run package
+```
+Then install the generated `.vsix` file in VSCode.
 
-### Active Block Boundary Condition Fix
-- **Issue**: Reset time boundary condition caused inactive blocks to display instead of "No active block"
-- **Solution**: Fixed session detection logic to properly handle reset time boundaries
-- **Result**: Accurate "No active block" display when session expires
+## 🧠 How It Works
 
-## 📋 Requirements
+### Smart Baseline Calculation
+- Analyzes your past 30 days of Claude Code usage
+- Groups usage into 5-hour blocks (matching Claude's rate limiting)
+- Calculates statistical average with outlier removal
+- Excludes current active session to prevent bias
+- Provides confidence levels based on data quality
 
-- VSCode 1.74.0+
-- Claude Code installed and configured
-- macOS or Linux (Windows not supported by Claude Code)
+### Usage Monitoring
+- Reads Claude Code usage data from `~/.claude/projects/`
+- Supports both legacy and modern JSONL formats
+- Tracks 5-hour session windows with UTC alignment
+- Updates every 60 seconds for real-time accuracy
+- Displays percentage relative to your personal baseline
 
-## 🏗️ Architecture
+## 🌍 Platform Support
 
-Built with Facade pattern for clean module separation and intelligent baseline calculation using statistical analysis of historical usage patterns.
+- ✅ **macOS**: Fully supported
+- ✅ **Linux**: Fully supported
+- ❌ **Windows**: Not supported (Claude Code limitation)
+
+**Requirements**:
+- VSCode 1.74.0 or later
+- Claude Code installed and used at least once
+- Node.js (for building from source)
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+**Note**: This is an unofficial extension not affiliated with Anthropic or Claude Code. It provides usage monitoring based on locally stored Claude Code usage data.
