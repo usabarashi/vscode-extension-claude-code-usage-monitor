@@ -64,8 +64,6 @@ export interface TokenUsageStats {
  * console.log(stats.totalTokens); // 425 (input + output only)
  * console.log(stats.requestCount); // 2
  * ```
- *
- * @since 0.1.0
  */
 export const calculateTokenUsage = (records: ClaudeUsageRecord[]): TokenUsageStats => {
     // Aggregate all token types using reduce for efficient single-pass calculation

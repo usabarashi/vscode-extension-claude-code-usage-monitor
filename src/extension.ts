@@ -1,31 +1,30 @@
 /**
  * Claude Code Usage Monitor - VSCode Extension Entry Point & Unified Facade
- * 
+ *
  * This module serves as both the VSCode extension entry point and the central
  * Facade pattern implementation, coordinating all core modules and managing
  * the complete data flow from parsing to UI display.
- * 
+ *
  * **Architecture Pattern: Facade**
  * - Coordinates: Data Parsing → Block Calculation → Baseline Analysis → UI Display
  * - Manages: VSCode integration, command registration, status bar updates
  * - Centralizes: Error handling, timing, and module communication
- * 
+ *
  * **Key Features:**
  * - Real-time Claude Code usage monitoring
  * - Intelligent baseline-based percentage calculation
  * - 5-hour session window tracking
  * - Cross-platform directory discovery
  * - Comprehensive error handling and reporting
- * 
+ *
  * **UI Integration:**
  * - Status bar display with color-coded usage levels
  * - Click-to-view detailed usage information
  * - Automatic 60-second refresh cycle
  * - Manual refresh command support
- * 
+ *
  * @module Extension
  * @pattern Facade
- * @since 0.1.0
  */
 
 import * as vscode from 'vscode';
@@ -50,26 +49,24 @@ let updateTimer: NodeJS.Timeout | undefined;
 
 /**
  * VSCode Extension activation function - Entry point for the extension lifecycle.
- * 
+ *
  * Sets up the complete monitoring system including status bar, commands, and
  * periodic updates. Registers all necessary VSCode integrations and starts
  * the monitoring process.
- * 
+ *
  * **Initialization Steps:**
  * 1. Create and configure status bar item
  * 2. Register user commands (show details, refresh)
  * 3. Start 60-second periodic update timer
  * 4. Perform initial status update
- * 
+ *
  * @param {vscode.ExtensionContext} context - VSCode extension context for managing subscriptions and lifecycle
- * 
+ *
  * @example
  * ```typescript
  * // Called automatically by VSCode when extension activates
  * // User sees status bar: "$(terminal) 45% | 32K avg | Reset: 16:00"
  * ```
- * 
- * @since 0.1.0
  */
 export function activate(context: vscode.ExtensionContext) {
     // Create status bar item positioned on the right side
@@ -96,23 +93,23 @@ export function activate(context: vscode.ExtensionContext) {
 
 /**
  * 🏛️ FACADE FUNCTION: Gets current usage status with baseline calculation.
- * 
+ *
  * This is the main coordination function that orchestrates all core modules
  * to provide unified usage information. Implements the Facade pattern by
  * hiding complex subsystem interactions behind a simple interface.
- * 
+ *
  * **Module Coordination Flow:**
  * ```
  * parseAllUsageData() → createMultiSessionBlock() → createUsageStatusFromMultiSession()
  * ```
- * 
+ *
  * **Error Handling:**
  * - Propagates parsing errors to UI layer
  * - Returns null for no-data scenarios
  * - Maintains error context throughout the flow
- * 
+ *
  * @returns {Promise<UsageStatus | null>} Complete usage status or null if no data
- * 
+ *
  * @example
  * ```typescript
  * const status = await getUsageStatus();
@@ -120,8 +117,6 @@ export function activate(context: vscode.ExtensionContext) {
  *   console.log(`Usage: ${status.usagePercentage}%`);
  * }
  * ```
- * 
- * @since 0.1.0
  */
 async function getUsageStatus(): Promise<UsageStatus | null> {
     // Facade coordinates: data parsing → block calculation → baseline analysis
@@ -143,33 +138,31 @@ async function getUsageStatus(): Promise<UsageStatus | null> {
 
 /**
  * 🏛️ FACADE FUNCTION: Creates comprehensive usage status with baseline calculation.
- * 
+ *
  * Integrates multiple core modules to transform raw session data into actionable
  * usage information with intelligent baseline analysis and predictive metrics.
- * 
+ *
  * **Processing Pipeline:**
  * 1. Extract current session data
  * 2. Calculate statistical baseline (excluding current session)
  * 3. Compute usage percentage and level
  * 4. Generate time-based predictions
  * 5. Create comprehensive status object
- * 
+ *
  * **Key Calculations:**
  * - **Usage Percentage**: Current vs baseline (not hard limits)
  * - **Consumption Rate**: Tokens per minute for predictions
  * - **Depletion Estimate**: When critical threshold might be reached
  * - **Confidence Assessment**: Statistical reliability of baseline
- * 
+ *
  * @param {MultiSessionBlock} multiSessionBlock - Processed session block data
  * @returns {Promise<UsageStatus>} Comprehensive usage status with predictions
- * 
+ *
  * @example
  * ```typescript
  * const status = await createUsageStatusFromMultiSession(sessionBlock);
  * console.log(`Level: ${status.usageLevel}, Confidence: ${status.baselineConfidence}`);
  * ```
- * 
- * @since 0.1.0
  */
 async function createUsageStatusFromMultiSession(
     multiSessionBlock: MultiSessionBlock
@@ -270,7 +263,7 @@ async function updateStatusBar() {
 /**
  * Creates tooltip text for the status bar item based on current usage status.
  * Provides detailed information about usage, baseline, timing, and errors.
- * 
+ *
  * @param status Current usage status from rateLimitManager
  * @returns Formatted tooltip string for display
  */
@@ -303,10 +296,10 @@ function createTooltip(status: UsageStatus): string {
     }
 
     // Add usage level indicator with emoji
-    const statusEmoji = status.isCriticalUsage ? '🔴 CRITICAL: Very high usage!' : 
-                       status.isHighUsage ? '🟡 WARNING: High usage' : 
-                       '🟢 NORMAL: Typical usage level';
-    
+    const statusEmoji = status.isCriticalUsage ? '🔴 CRITICAL: Very high usage!' :
+        status.isHighUsage ? '🟡 WARNING: High usage' :
+            '🟢 NORMAL: Typical usage level';
+
     return tooltip + `\n${statusEmoji}\n\nClick for detailed view`;
 }
 
@@ -344,8 +337,8 @@ async function showUsageDetails() {
 
         // Add status indicator with appropriate emoji
         const statusText = status.isCriticalUsage ? 'Status: 🔴 CRITICAL - Very high usage!' :
-                           status.isHighUsage ? 'Status: 🟡 WARNING - High usage' :
-                           'Status: 🟢 NORMAL - Typical usage level';
+            status.isHighUsage ? 'Status: 🟡 WARNING - High usage' :
+                'Status: 🟢 NORMAL - Typical usage level';
 
         vscode.window.showInformationMessage(message + `\n${statusText}`);
     } catch (error) {
@@ -370,7 +363,7 @@ export function deactivate() {
     if (updateTimer) {
         clearInterval(updateTimer);
     }
-    
+
     // Dispose of the status bar item
     statusBarItem?.dispose();
 }

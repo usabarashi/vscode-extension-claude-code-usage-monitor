@@ -43,8 +43,6 @@ import { UsageStatus } from '../types';
  * const text = getStatusBarText(status);
  * statusBarItem.text = text; // "$(terminal) 85% | 45K avg | Reset: 16:00"
  * ```
- *
- * @since 0.1.0
  */
 export const getStatusBarText = (status: UsageStatus): string => {
     const percentage = status.usagePercentage;
@@ -80,8 +78,6 @@ export const getStatusBarText = (status: UsageStatus): string => {
  * const color = getStatusBarColor(status);
  * statusBarItem.color = color; // "#ff4444" for high usage
  * ```
- *
- * @since 0.1.0
  */
 export const getStatusBarColor = (status: UsageStatus): string => {
     // Use percentage-based color for more accurate representation
@@ -108,8 +104,6 @@ export const getStatusBarColor = (status: UsageStatus): string => {
  * const details = formatUsageDetails(status);
  * console.log(details); // "45,230 tokens (85% of block)"
  * ```
- *
- * @since 0.1.0
  */
 export const formatUsageDetails = (status: UsageStatus): string => {
     const formattedUsage = status.currentUsage.toLocaleString();
@@ -135,8 +129,6 @@ export const formatUsageDetails = (status: UsageStatus): string => {
  * console.log(timeDetails['Reset Time']); // "1/15/2024, 4:00:00 PM"
  * console.log(timeDetails['Tokens Per Minute']); // "125"
  * ```
- *
- * @since 0.1.0
  */
 export const formatTimeDetails = (status: UsageStatus): { [key: string]: string } => {
     const resetTime = status.resetTime.toLocaleString();

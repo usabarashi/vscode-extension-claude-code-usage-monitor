@@ -40,8 +40,6 @@ const SESSION_DURATION_MS = 5 * 60 * 60 * 1000;
  *   console.log(`Current usage: ${block.mostRestrictiveSession.totalTokens}`);
  * }
  * ```
- *
- * @since 0.1.0
  */
 export const createMultiSessionBlock = (
     records: ClaudeUsageRecord[],

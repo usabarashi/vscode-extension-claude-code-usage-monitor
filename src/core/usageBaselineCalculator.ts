@@ -88,8 +88,6 @@ export interface UsageBaseline {
  * console.log(`Average usage: ${baseline.averageUsage} tokens`);
  * console.log(`Confidence: ${baseline.confidence}`);
  * ```
- *
- * @since 0.1.0
  */
 export const calculateUsageBaseline = (records: ClaudeUsageRecord[], currentActiveBlockId?: string): UsageBaseline => {
     if (records.length === 0) {
