@@ -35,7 +35,19 @@
         "title": "Refresh Usage Data",
         "category": "Claude Code Usage"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Claude Code Usage Monitor",
+      "properties": {
+        "claude-code-usage.customLimit": {
+          "type": ["number", "null"],
+          "default": null,
+          "description": "Custom Rate Limit in tokens. Leave empty for automatic statistical estimation based on your usage patterns.",
+          "minimum": 1000,
+          "maximum": 200000
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

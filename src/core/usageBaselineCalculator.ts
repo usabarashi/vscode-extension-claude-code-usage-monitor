@@ -1,100 +1,45 @@
 /**
- * Usage Baseline Calculator - Core Module (Independent)
- *
- * Calculates typical usage patterns instead of strict rate limits using
- * statistical analysis of historical data. Provides intelligent baselines
- * for monitoring relative usage levels.
- *
- * **Statistical Methods:**
- * - IQR outlier removal for data cleaning
- * - Standard deviation for threshold calculation
- * - Percentile analysis for usage distribution
- * - Confidence scoring based on data quality
- *
- * **Key Concepts:**
- * - **Baseline**: Average usage pattern, not strict limits
- * - **Thresholds**: Statistical boundaries for warnings
- * - **Confidence**: Data quality assessment
- *
+ * Usage Baseline Calculator - Core Module
+ * 
+ * Calculates statistical baselines from historical usage data using IQR outlier removal,
+ * standard deviation analysis, and confidence scoring.
+ * 
  * @module UsageBaselineCalculator
  */
 
 import { ClaudeUsageRecord } from '../types';
 
 /**
- * Statistical usage baseline interface with comprehensive metrics.
- *
- * Represents analyzed usage patterns derived from historical data,
- * providing both descriptive statistics and actionable thresholds.
- *
- * @interface UsageBaseline
+ * Statistical usage baseline with metrics and thresholds.
  */
 export interface UsageBaseline {
-    /** Statistical mean of token usage across sessions */
     averageUsage: number;
-
-    /** Middle value when usage data is sorted (50th percentile) */
     medianUsage: number;
-
-    /** Measure of data variability around the mean */
     standardDeviation: number;
-
-    /** 75th percentile of usage distribution */
     percentile75: number;
-
-    /** 90th percentile of usage distribution */
     percentile90: number;
-
-    /** Warning threshold (mean + 1 std dev, ~84th percentile) */
     highUsageThreshold: number;
-
-    /** Critical threshold (mean + 2 std dev, ~97th percentile) */
     criticalUsageThreshold: number;
-
-    /** Number of sessions included in analysis */
     totalSessions: number;
-
-    /** Statistical method used for calculation */
     analysisMethod: string;
-
-    /** Confidence level in the baseline accuracy */
     confidence: 'high' | 'medium' | 'low';
 }
 
 /**
- * Performs comprehensive statistical analysis of historical usage data to
- * establish intelligent baselines for monitoring. Uses advanced techniques
- * including outlier removal and confidence assessment.
- *
- * **Algorithm Steps:**
- * 1. Filter recent records (30 days)
- * 2. Group into 5-hour session blocks
- * 3. Remove outliers using IQR method
- * 4. Calculate statistical measures
- * 5. Determine confidence level
- *
- * **Exclusions:**
- * - Current active block (prevents bias)
- * - Sessions with <1000 tokens (insufficient data)
- * - Statistical outliers (>1.5 IQR from quartiles)
- *
- * @param {ClaudeUsageRecord[]} records - Historical usage records
- * @param {string} [currentActiveBlockId] - ID of current session to exclude
- * @returns {UsageBaseline} Comprehensive baseline analysis
- *
- * @example
- * ```typescript
- * const baseline = calculateUsageBaseline(records, 'current-session-id');
- * console.log(`Average usage: ${baseline.averageUsage} tokens`);
- * console.log(`Confidence: ${baseline.confidence}`);
- * ```
+ * Calculates statistical baseline from historical usage data.
+ * 
+ * Filters last 30 days, groups into 5-hour blocks, removes outliers using IQR,
+ * and calculates statistical measures with confidence assessment.
+ * 
+ * @param records Historical usage records
+ * @param currentActiveBlockId Optional current session ID to exclude
+ * @returns Statistical baseline analysis
  */
 export const calculateUsageBaseline = (records: ClaudeUsageRecord[], currentActiveBlockId?: string): UsageBaseline => {
     if (records.length === 0) {
         return createDefaultBaseline();
     }
 
-    // Use simpler approach - just filter records by time and calculate from completed blocks
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -107,16 +52,15 @@ export const calculateUsageBaseline = (records: ClaudeUsageRecord[], currentActi
         return createDefaultBaseline();
     }
 
-    // Group by 5-hour blocks and calculate usage
     const blockUsages: number[] = [];
-    const blockSize = 5 * 60 * 60 * 1000; // 5 hours
+    const blockSize = 5 * 60 * 60 * 1000;
 
     const sortedRecords = recentRecords.sort((a, b) =>
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
     let currentBlockStart = new Date(sortedRecords[0].timestamp);
-    currentBlockStart.setUTCMinutes(0, 0, 0); // Floor to hour
+    currentBlockStart.setUTCMinutes(0, 0, 0);
     let currentBlockTokens = 0;
     let currentBlockId = currentBlockStart.toISOString();
 
@@ -129,7 +73,6 @@ export const calculateUsageBaseline = (records: ClaudeUsageRecord[], currentActi
                 blockUsages.push(currentBlockTokens);
             }
 
-            // Start new block
             currentBlockStart = new Date(recordTime);
             currentBlockStart.setUTCMinutes(0, 0, 0);
             currentBlockId = currentBlockStart.toISOString();
@@ -139,7 +82,6 @@ export const calculateUsageBaseline = (records: ClaudeUsageRecord[], currentActi
         }
     }
 
-    // Add final block
     if (currentBlockTokens > 1000 && currentBlockId !== currentActiveBlockId) {
         blockUsages.push(currentBlockTokens);
     }
@@ -152,28 +94,22 @@ export const calculateUsageBaseline = (records: ClaudeUsageRecord[], currentActi
 
     const tokenUsages = activeBlocks;
 
-    // Remove outliers using IQR method
     const cleanedUsages = removeOutliers(tokenUsages);
 
     if (cleanedUsages.length < 3) {
         return createDefaultBaseline();
     }
 
-    // Calculate statistical measures
     const sortedUsages = [...cleanedUsages].sort((a, b) => a - b);
     const averageUsage = Math.round(cleanedUsages.reduce((sum, usage) => sum + usage, 0) / cleanedUsages.length);
     const medianUsage = calculateMedian(sortedUsages);
     const standardDeviation = calculateStandardDeviation(cleanedUsages, averageUsage);
 
-    // Calculate percentiles
     const percentile75 = calculatePercentile(sortedUsages, 75);
     const percentile90 = calculatePercentile(sortedUsages, 90);
 
-    // Set thresholds based on statistical distribution
-    const highUsageThreshold = Math.round(averageUsage + standardDeviation); // ~84th percentile
-    const criticalUsageThreshold = Math.round(averageUsage + 2 * standardDeviation); // ~97th percentile
-
-    // Determine confidence based on data quality
+    const highUsageThreshold = Math.round(averageUsage + standardDeviation);
+    const criticalUsageThreshold = Math.round(averageUsage + 2 * standardDeviation);
     let confidence: 'high' | 'medium' | 'low' = 'medium';
     if (activeBlocks.length >= 20 && standardDeviation < averageUsage * 0.5) {
         confidence = 'high';
@@ -195,9 +131,7 @@ export const calculateUsageBaseline = (records: ClaudeUsageRecord[], currentActi
     };
 };
 
-/**
- * Removes outliers using IQR method.
- */
+/** Removes outliers using IQR method. */
 const removeOutliers = (values: number[]): number[] => {
     if (values.length < 4) return values;
 
@@ -212,9 +146,7 @@ const removeOutliers = (values: number[]): number[] => {
     return values.filter(value => value >= lowerBound && value <= upperBound);
 };
 
-/**
- * Calculates median value.
- */
+/** Calculates median value. */
 const calculateMedian = (sortedValues: number[]): number => {
     const mid = Math.floor(sortedValues.length / 2);
     if (sortedValues.length % 2 === 0) {
@@ -223,18 +155,14 @@ const calculateMedian = (sortedValues: number[]): number => {
     return sortedValues[mid];
 };
 
-/**
- * Calculates standard deviation.
- */
+/** Calculates standard deviation. */
 const calculateStandardDeviation = (values: number[], mean: number): number => {
     const squaredDifferences = values.map(value => Math.pow(value - mean, 2));
     const variance = squaredDifferences.reduce((sum, sq) => sum + sq, 0) / values.length;
     return Math.sqrt(variance);
 };
 
-/**
- * Calculates percentile value.
- */
+/** Calculates percentile value. */
 const calculatePercentile = (sortedValues: number[], percentile: number): number => {
     const index = (percentile / 100) * (sortedValues.length - 1);
     const lower = Math.floor(index);
@@ -248,9 +176,7 @@ const calculatePercentile = (sortedValues: number[], percentile: number): number
     return Math.round(sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight);
 };
 
-/**
- * Creates default baseline for insufficient data.
- */
+/** Creates default baseline for insufficient data. */
 const createDefaultBaseline = (): UsageBaseline => ({
     averageUsage: 30_000,
     medianUsage: 25_000,
@@ -264,17 +190,13 @@ const createDefaultBaseline = (): UsageBaseline => ({
     confidence: 'low'
 });
 
-/**
- * Formats baseline description for display.
- */
+/** Formats baseline description for display. */
 export const formatBaselineDescription = (baseline: UsageBaseline): string => {
     const avgK = (baseline.averageUsage / 1000).toFixed(0);
     return `Avg ~${avgK}K`;
 };
 
-/**
- * Gets usage level description.
- */
+/** Gets usage level description. */
 export const getUsageLevel = (currentUsage: number, baseline: UsageBaseline): {
     level: 'low' | 'normal' | 'high' | 'critical';
     description: string;
@@ -290,10 +212,24 @@ export const getUsageLevel = (currentUsage: number, baseline: UsageBaseline): {
     }
 };
 
-/**
- * Calculates usage percentage relative to high threshold.
- */
+/** @deprecated Use calculateUsagePercentageWithLimit for consistent calculation */
 export const calculateUsagePercentage = (currentUsage: number, baseline: UsageBaseline): number => {
-    // Use high usage threshold as 100% reference point, allow exceeding 100%
     return Math.round((currentUsage / baseline.highUsageThreshold) * 100);
 };
+
+/**
+ * Calculates usage percentage relative to rate limit estimate.
+ * @param currentUsage Current token usage
+ * @param rateLimitEstimate Estimated or configured rate limit
+ * @returns Usage percentage (0-100+, allows exceeding 100%)
+ */
+export const calculateUsagePercentageWithLimit = (
+    currentUsage: number, 
+    rateLimitEstimate: number
+): number => {
+    if (rateLimitEstimate <= 0) {
+        return 0;
+    }
+    return Math.round((currentUsage / rateLimitEstimate) * 100);
+};
+
