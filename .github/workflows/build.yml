@@ -1,37 +1,38 @@
 name: Build and Test
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main, develop ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ '**' ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version: '20'
         cache: 'npm'
-        
+
     - name: Install dependencies
       run: npm ci
-      
+
     - name: Compile TypeScript
       run: npm run compile
-      
+
     - name: Install VSCE
       run: npm install -g @vscode/vsce
-      
+
     - name: Package extension (test)
       run: vsce package --out "claude-code-usage-monitor-dev.vsix"
-      
+
     # Only save artifacts for main branch (not for PRs)
     - name: Upload development build
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
