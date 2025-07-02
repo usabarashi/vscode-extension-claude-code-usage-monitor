@@ -33,7 +33,7 @@ jobs:
     - name: Package extension (test)
       run: vsce package --out "claude-code-usage-monitor-dev.vsix"
 
-    # Only save artifacts for main branch (not for PRs)
+    # Only save artifacts for develop branch pushes
     - name: Upload development build
       if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
