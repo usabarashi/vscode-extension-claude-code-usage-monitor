@@ -35,7 +35,7 @@ jobs:
 
     # Only save artifacts for main branch (not for PRs)
     - name: Upload development build
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: vsix-dev-build
