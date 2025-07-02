@@ -1,52 +1,21 @@
 /**
  * Status Bar Formatter - UI Display Layer
- *
- * Provides pure formatting functions for VSCode status bar display.
- * Handles visual representation of usage data with no business logic.
- * Separated from core modules for clean UI/business logic separation.
- *
- * **Formatting Strategy:**
- * - Consistent visual format across all displays
- * - Color-coded usage levels for quick recognition
- * - Compact status bar text with comprehensive tooltips
- * - Localized time formatting for user timezone
- *
- * **Color Scheme:**
- * - 🟢 Green: <70% usage (normal)
- * - 🟡 Yellow: 70-99% usage (warning)
- * - 🔴 Red: 100%+ usage (critical)
- *
  * @module StatusBarFormatter
- * @layer UI
  */
 
 import { UsageStatus } from '../types';
+import { formatBurnRate, formatPredictionTime } from '../core/burnRateCalculator';
+import { RateLimitEstimationService } from '../services/rateLimitEstimationService';
 
 /**
- * Creates a compact, informative status bar display that shows current
- * usage percentage, baseline reference, and reset time in user's timezone.
- *
- * **Format Specification:**
- * ```
- * $(terminal) {percentage}% | {baseline}K avg | Reset: {time}
- * ```
- *
- * **Examples:**
- * - `$(terminal) 45% | 32K avg | Reset: 16:00`
- * - `$(terminal) 120% | 50K avg | Reset: 21:30`
- *
- * @param {UsageStatus} status - Complete usage status information
- * @returns {string} Formatted status bar text
- *
- * @example
- * ```typescript
- * const text = getStatusBarText(status);
- * statusBarItem.text = text; // "$(terminal) 85% | 45K avg | Reset: 16:00"
- * ```
+ * Creates status bar text with usage percentage, rate limit, and reset time.
+ * @param status Usage status information
+ * @param rateLimitEstimate Estimated Rate Limit in tokens
+ * @returns Formatted status bar text
  */
-export const getStatusBarText = (status: UsageStatus): string => {
+export const getStatusBarText = (status: UsageStatus, rateLimitEstimate: number): string => {
     const percentage = status.usagePercentage;
-    const baseline = (status.usageBaseline / 1000).toFixed(0); // Convert to K
+    const rateLimitFormatted = RateLimitEstimationService.formatRateLimitEstimate(rateLimitEstimate);
 
     const resetTime = status.resetTime.toLocaleTimeString(undefined, {
         hour12: false,
@@ -54,56 +23,28 @@ export const getStatusBarText = (status: UsageStatus): string => {
         minute: '2-digit'
     });
 
-    return `$(terminal) ${percentage}% | ${baseline}K avg | Reset: ${resetTime}`;
+    return `$(terminal) ${percentage}% | ${rateLimitFormatted} | ${resetTime}`;
 };
 
 /**
- * Provides visual feedback through color coding to help users quickly
- * assess their current usage status without reading the detailed numbers.
- *
- * **Color Mapping:**
- * - **Green (`#00aa00`)**: <70% usage - Normal operation
- * - **Yellow (`#ffaa00`)**: 70-99% usage - Approaching limits
- * - **Red (`#ff4444`)**: 100%+ usage - Exceeding typical patterns
- *
- * **Design Rationale:**
- * Uses percentage-based thresholds rather than absolute token counts
- * for more accurate representation of user's personal usage patterns.
- *
- * @param {UsageStatus} status - Usage status with percentage information
- * @returns {string} Hex color code for status bar styling
- *
- * @example
- * ```typescript
- * const color = getStatusBarColor(status);
- * statusBarItem.color = color; // "#ff4444" for high usage
- * ```
+ * Returns color based on usage percentage.
+ * @param status Usage status with percentage information
+ * @returns Hex color code for status bar styling
  */
 export const getStatusBarColor = (status: UsageStatus): string => {
-    // Use percentage-based color for more accurate representation
     if (status.usagePercentage >= 100) {
-        return '#ff4444'; // Red for 100%+ usage
+        return '#ff4444';
     } else if (status.usagePercentage >= 70) {
-        return '#ffaa00'; // Yellow for 70-99% usage
+        return '#ffaa00';
     } else {
-        return '#00aa00'; // Green for <70% usage
+        return '#00aa00';
     }
 };
 
 /**
- * Creates human-readable usage details with proper number formatting
- * and contextual percentage information for detailed views.
- *
- * **Format**: `{tokens:formatted} tokens ({percentage}% of block)`
- *
- * @param {UsageStatus} status - Usage status with token counts
- * @returns {string} Formatted usage details string
- *
- * @example
- * ```typescript
- * const details = formatUsageDetails(status);
- * console.log(details); // "45,230 tokens (85% of block)"
- * ```
+ * Formats usage details as "X,XXX tokens (XX% of block)"
+ * @param status Usage status with token counts
+ * @returns Formatted usage details string
  */
 export const formatUsageDetails = (status: UsageStatus): string => {
     const formattedUsage = status.currentUsage.toLocaleString();
@@ -111,27 +52,19 @@ export const formatUsageDetails = (status: UsageStatus): string => {
 };
 
 /**
- * Creates a structured object with all time-based metrics including reset times,
- * countdowns, consumption rates, and predictive estimations for tooltip display.
- *
- * **Returned Fields:**
- * - `Reset Time`: Localized reset timestamp
- * - `Time Until Reset`: Human-readable countdown
- * - `Tokens Per Minute`: Current consumption rate
- * - `Estimated High Usage`: Predicted high usage time (if applicable)
- *
- * @param {UsageStatus} status - Complete usage status with timing data
- * @returns {Object<string, string>} Dictionary of formatted time details
- *
- * @example
- * ```typescript
- * const timeDetails = formatTimeDetails(status);
- * console.log(timeDetails['Reset Time']); // "1/15/2024, 4:00:00 PM"
- * console.log(timeDetails['Tokens Per Minute']); // "125"
- * ```
+ * Creates structured time and burn rate details for tooltip display.
+ * @param status Complete usage status with timing data
+ * @returns Dictionary of formatted time details
  */
 export const formatTimeDetails = (status: UsageStatus): { [key: string]: string } => {
-    const resetTime = status.resetTime.toLocaleString();
+    const resetTime = status.resetTime.toLocaleString(undefined, {
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
     const timeUntilReset = status.timeUntilResetFormatted;
 
     const details: { [key: string]: string } = {
@@ -140,7 +73,40 @@ export const formatTimeDetails = (status: UsageStatus): { [key: string]: string 
         'Tokens Per Minute': status.estimatedTokensPerMinute.toString()
     };
 
-    if (status.estimatedDepletionTime) {
+    if (status.burnRate && status.burnRate.tokensPerMinute > 0) {
+        const burnRate = status.burnRate;
+        details['Burn Rate'] = formatBurnRate(burnRate);
+        details['Trend'] = burnRate.trend;
+        
+        if (burnRate.recentActivity.last15min > 0) {
+            details['Last 15min'] = `${(burnRate.recentActivity.last15min / 1000).toFixed(1)}K tokens`;
+        }
+        
+        const currentTime = new Date();
+        if (burnRate.predictions.timeToHighThreshold) {
+            const timeToHigh = formatPredictionTime(burnRate.predictions.timeToHighThreshold, currentTime);
+            if (timeToHigh) {
+                details['Time to High Usage'] = timeToHigh;
+            }
+        }
+        
+        if (burnRate.predictions.estimatedDepletionTime) {
+            const timeToDepletion = formatPredictionTime(burnRate.predictions.estimatedDepletionTime, currentTime);
+            if (timeToDepletion) {
+                details['Estimated Depletion'] = timeToDepletion;
+            }
+        }
+        
+        if (burnRate.modelBreakdown?.[0]) {
+            const topModel = burnRate.modelBreakdown[0];
+            details['Top Model'] = `${topModel.model} (${topModel.percentage}%)`;
+            if (topModel.estimatedCost && topModel.estimatedCost > 0) {
+                details['Estimated Cost'] = `$${topModel.estimatedCost.toFixed(3)}`;
+            }
+        }
+    }
+
+    if (status.estimatedDepletionTime && !details['Estimated Depletion']) {
         details['Estimated High Usage'] = status.estimatedDepletionTime.toLocaleString();
     }
 

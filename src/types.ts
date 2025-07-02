@@ -64,5 +64,34 @@ export interface UsageStatus {
     baselineDescription: string;
     usageLevel: 'low' | 'normal' | 'high' | 'critical';
     baselineConfidence: 'high' | 'medium' | 'low';
+    burnRate?: BurnRateAnalysis;
     error?: ParseError;
+}
+
+export interface BurnRateAnalysis {
+    tokensPerMinute: number;
+    tokensPerHour: number;
+    averageRequestSize: number;
+    recentActivity: {
+        last15min: number;
+        last30min: number;
+        last60min: number;
+    };
+    predictions: {
+        estimatedDepletionTime?: Date;
+        timeToHighThreshold?: Date;
+        timeToBaseline?: Date;
+        confidence: 'high' | 'medium' | 'low';
+    };
+    trend: 'increasing' | 'decreasing' | 'stable';
+    modelBreakdown?: ModelUsageBreakdown[];
+}
+
+export interface ModelUsageBreakdown {
+    model: string;
+    tokens: number;
+    requests: number;
+    avgTokensPerRequest: number;
+    percentage: number;
+    estimatedCost?: number;
 }
