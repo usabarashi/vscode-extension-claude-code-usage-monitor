@@ -4,10 +4,3 @@ node_modules
 .vscode-test/
 *.vsix
 .claude/
-
-# Nix
-result
-result-*
-.direnv/
-.envrc.local
-.env.local
