@@ -2,7 +2,7 @@
   "name": "claude-code-usage-monitor",
   "displayName": "Claude Code Usage Monitor",
   "description": "A VS Code extension for tracking Claude Code usage",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "usabarashi",
   "license": "MIT",
   "repository": {
@@ -40,7 +40,10 @@
       "title": "Claude Code Usage Monitor",
       "properties": {
         "claude-code-usage.customLimit": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "default": null,
           "description": "Custom Rate Limit in tokens. Leave empty for automatic statistical estimation based on your usage patterns.",
           "minimum": 1000,
