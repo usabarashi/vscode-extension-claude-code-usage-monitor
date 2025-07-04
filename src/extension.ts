@@ -165,7 +165,8 @@ async function showUsageDetails() {
             message += `Estimated High Usage: ${timeDetails['Estimated High Usage']}\n`;
         }
 
-        const statusText = status.isCriticalUsage ? 'Status: 🔴 CRITICAL - Very high usage!' :
+        const statusText = status.usagePercentage >= 100 ? 'Status: 🔴 CRITICAL - Exceeded rate limit!' :
+            status.isCriticalUsage ? 'Status: 🔴 CRITICAL - Very high usage!' :
             status.isHighUsage ? 'Status: 🟡 WARNING - High usage' :
                 'Status: 🟢 NORMAL - Typical usage level';
 
