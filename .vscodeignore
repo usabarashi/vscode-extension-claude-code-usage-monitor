@@ -2,6 +2,7 @@
 out/test/**
 out/**/*.map
 src/**
+!src/templates/**
 **/*.ts
 
 # Development files

@@ -74,10 +74,14 @@ export const formatTimeDetails = (status: UsageStatus): { [key: string]: string 
     });
     const timeUntilReset = status.timeUntilResetFormatted;
 
+    const consumptionRateFormatted = status.estimatedTokensPerMinute >= 1000 
+        ? `${(status.estimatedTokensPerMinute / 1000).toFixed(1)}K` 
+        : status.estimatedTokensPerMinute.toString();
+
     const details: { [key: string]: string } = {
         'Reset Time': resetTime,
         'Time Until Reset': timeUntilReset,
-        'Tokens Per Minute': status.estimatedTokensPerMinute.toString()
+        'Tokens Per Minute': consumptionRateFormatted
     };
 
     if (status.burnRate && status.burnRate.tokensPerMinute > 0) {

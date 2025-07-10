@@ -6,10 +6,10 @@
 import { UsageStatus, MultiSessionBlock } from '../types';
 import { createMultiSessionBlock } from '../core/blockCalculator';
 import { parseAllUsageData } from '../core/claudeDataParser';
-import { 
-    calculateUsageBaseline, 
-    formatBaselineDescription, 
-    getUsageLevel, 
+import {
+    calculateUsageBaseline,
+    formatBaselineDescription,
+    getUsageLevel,
     calculateUsagePercentageWithLimit
 } from '../core/usageBaselineCalculator';
 import { RateLimitEstimationService } from './rateLimitEstimationService';
@@ -26,7 +26,7 @@ export interface UsageStatusResult {
 
 /** Facade service that orchestrates usage monitoring operations. */
 export class UsageMonitorFacade {
-    
+
     /**
      * Gets complete usage status with all analysis data.
      * @param customLimit Optional user-configured rate limit
@@ -92,7 +92,7 @@ export class UsageMonitorFacade {
             baseline.averageUsage
         );
 
-        const legacyConsumptionRate = this.calculateLegacyConsumptionRate(session, currentUsage);
+        const legacyConsumptionRate = this.calculateLegacyConsumptionRate(session, currentUsage, new Date());
 
         const estimatedDepletionTime = this.calculateDepletionTime(
             burnRate,
@@ -111,7 +111,7 @@ export class UsageMonitorFacade {
             timeUntilResetFormatted,
             isHighUsage,
             isCriticalUsage,
-            estimatedTokensPerMinute: Math.max(Math.round(legacyConsumptionRate), burnRate.tokensPerMinute),
+            estimatedTokensPerMinute: Math.round(legacyConsumptionRate),
             estimatedDepletionTime,
             baselineDescription: formatBaselineDescription(baseline),
             usageLevel,
@@ -125,12 +125,15 @@ export class UsageMonitorFacade {
      * Calculates legacy consumption rate for backward compatibility.
      * @param session Current session data
      * @param currentUsage Current token usage
+     * @param currentTime Current time for calculation
      * @returns Tokens per minute consumption rate
      */
-    private calculateLegacyConsumptionRate(session: any, currentUsage: number): number {
-        const sessionDurationMs = session.endTime.getTime() - session.startTime.getTime();
-        const sessionDurationMinutes = sessionDurationMs / (1000 * 60);
-        return sessionDurationMinutes > 0 ? currentUsage / sessionDurationMinutes : 0;
+    private calculateLegacyConsumptionRate(session: any, currentUsage: number, currentTime: Date): number {
+        const firstRecordTime = session.firstRecordTime || session.startTime;
+        const actualDurationMs = currentTime.getTime() - firstRecordTime.getTime();
+        const actualDurationMinutes = actualDurationMs / (1000 * 60);
+        if (actualDurationMinutes < 1) return 0;
+        return currentUsage / actualDurationMinutes;
     }
 
     /**
