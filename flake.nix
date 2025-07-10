@@ -22,7 +22,7 @@
           name = "vscode-extension-dev";
 
           buildInputs = with pkgs; [
-            nodejs
+            nodejs_24
             nodePackages.typescript
             nodePackages.typescript-language-server
             vsce
