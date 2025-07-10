@@ -13,17 +13,20 @@ import {
     formatUsageDetails,
     formatTimeDetails
 } from './ui/statusBarFormatter';
+import { TemplateService, TemplateData } from './ui/templateService';
 
 let statusBarItem: vscode.StatusBarItem;
 let updateTimer: NodeJS.Timeout | undefined;
+let detailsPanel: vscode.WebviewPanel | undefined;
 const usageMonitorFacade = new UsageMonitorFacade();
-
+let extensionPath: string;
 
 /**
  * Activates the VSCode extension.
  * @param context VSCode extension context
  */
 export function activate(context: vscode.ExtensionContext) {
+    extensionPath = context.extensionPath;
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBarItem.command = 'claude-code-usage.showDetails';
     context.subscriptions.push(statusBarItem);
@@ -61,7 +64,7 @@ async function updateStatusBar() {
 
         if (result) {
             const { status, parsedData, rateLimitEstimate } = result;
-            
+
             if (status.error) {
                 statusBarItem.text = '$(warning) Data Issue';
                 statusBarItem.color = '#ffaa00';
@@ -115,11 +118,11 @@ function createTooltip(status: UsageStatus, rateLimitEstimate?: number): string 
 
     let tooltip = `Claude Code Usage Monitor\n\n`;
     tooltip += `Current Usage: ${usageDetails}\n`;
-    
+
     if (rateLimitEstimate) {
         tooltip += `Rate Limit Estimate: ${rateLimitEstimate.toLocaleString()} tokens\n`;
     }
-    
+
     tooltip += `Baseline: ${status.usageBaseline.toLocaleString()} tokens (~${status.baselineDescription})\n\n`;
     tooltip += `Reset Time: ${timeDetails['Reset Time']}\n`;
     tooltip += `Time Until Reset: ${timeDetails['Time Until Reset']}\n`;
@@ -153,25 +156,104 @@ async function showUsageDetails() {
         const { status, parsedData, rateLimitEstimate } = result;
 
         if (status.error) {
+            const errorMessage = [
+                `⚠️ ${status.error.message}`,
+                '',
+                `Details: ${status.error.details}`,
+                status.error.suggestion ? `Suggestion: ${status.error.suggestion}` : ''
+            ].filter(line => line).join('\n');
+
+            vscode.window.showErrorMessage(errorMessage);
             return;
         }
 
         const usageDetails = formatUsageDetails(status);
         const timeDetails = formatTimeDetails(status);
 
-        let message = `Claude Code Usage Details\n\nCurrent Usage: ${usageDetails}\nUsage Level: ${status.usageLevel}\nBaseline Confidence: ${status.baselineConfidence}\n\nReset Time: ${timeDetails['Reset Time']}\nTime Until Reset: ${timeDetails['Time Until Reset']}\nConsumption Rate: ${timeDetails['Tokens Per Minute']} tokens/min\n`;
+        // Create a formatted message array for better display
+        const messageLines = [
+            `Claude Code Usage Details`,
+            '',
+            `Current Usage: ${usageDetails}`,
+            `Usage Level: ${status.usageLevel}`,
+            `Baseline Confidence: ${status.baselineConfidence}`,
+            '',
+            `Reset Time: ${timeDetails['Reset Time']}`,
+            `Time Until Reset: ${timeDetails['Time Until Reset']}`,
+            `Consumption Rate: ${timeDetails['Tokens Per Minute']} tokens/min`
+        ];
 
-        if (timeDetails['Estimated High Usage']) {
-            message += `Estimated High Usage: ${timeDetails['Estimated High Usage']}\n`;
+        if (timeDetails['Burn Rate']) {
+            messageLines.push(`Burn Rate: ${timeDetails['Burn Rate']}`);
         }
 
-        const statusText = status.isCriticalUsage ? 'Status: 🔴 CRITICAL - Very high usage!' :
-            status.isHighUsage ? 'Status: 🟡 WARNING - High usage' :
-                'Status: 🟢 NORMAL - Typical usage level';
+        if (timeDetails['Top Model']) {
+            messageLines.push(`Top Model: ${timeDetails['Top Model']}`);
+        }
 
-        vscode.window.showInformationMessage(message + `\n${statusText}`);
+        if (timeDetails['Estimated High Usage']) {
+            messageLines.push(`Estimated High Usage: ${timeDetails['Estimated High Usage']}`);
+        }
+
+        if (timeDetails['Estimated Depletion']) {
+            messageLines.push(`Estimated Depletion: ${timeDetails['Estimated Depletion']}`);
+        }
+
+        const statusEmoji = status.usagePercentage >= 100 ? '🔴' :
+            status.isCriticalUsage ? '🔴' :
+                status.isHighUsage ? '🟡' :
+                    '🟢';
+
+        const statusText = status.usagePercentage >= 100 ? 'CRITICAL - Exceeded rate limit!' :
+            status.isCriticalUsage ? 'CRITICAL - Very high usage!' :
+                status.isHighUsage ? 'WARNING - High usage' :
+                    'NORMAL - Typical usage level';
+
+        messageLines.push('', `Status: ${statusEmoji} ${statusText}`);
+
+        // Reuse existing panel or create new one
+        if (detailsPanel) {
+            detailsPanel.reveal(vscode.ViewColumn.One);
+        } else {
+            detailsPanel = vscode.window.createWebviewPanel(
+                'claudeUsageDetails',
+                'Claude Code Usage Details',
+                vscode.ViewColumn.One,
+                {
+                    enableScripts: false,
+                    retainContextWhenHidden: true
+                }
+            );
+
+            // Clean up when the panel is closed
+            detailsPanel.onDidDispose(() => {
+                detailsPanel = undefined;
+            });
+        }
+
+        // Prepare template data
+        const templateData: TemplateData = {
+            currentUsage: usageDetails,
+            usageLevel: status.usageLevel,
+            baselineConfidence: status.baselineConfidence,
+            resetTime: timeDetails['Reset Time'],
+            timeUntilReset: timeDetails['Time Until Reset'],
+            consumptionRate: timeDetails['Tokens Per Minute'],
+            burnRate: timeDetails['Burn Rate'],
+            topModel: timeDetails['Top Model'],
+            estimatedHighUsage: timeDetails['Estimated High Usage'],
+            estimatedDepletion: timeDetails['Estimated Depletion'],
+            statusClass: status.isCriticalUsage ? 'critical' : status.isHighUsage ? 'warning' : '',
+            statusEmoji,
+            statusText
+        };
+
+        const htmlContent = TemplateService.renderUsageDetails(templateData, extensionPath);
+
+        detailsPanel.webview.html = htmlContent;
     } catch (error) {
         console.error('Error showing usage details:', error);
+        vscode.window.showErrorMessage('Failed to display usage details');
     }
 }
 
@@ -190,4 +272,5 @@ export function deactivate() {
         clearInterval(updateTimer);
     }
     statusBarItem?.dispose();
+    detailsPanel?.dispose();
 }

@@ -2,6 +2,7 @@
 out/test/**
 out/**/*.map
 src/**
+!src/templates/**
 **/*.ts
 
 # Development files
@@ -46,3 +47,15 @@ yarn-error.log*
 # Temporary files
 tmp/
 temp/
+
+# AI instruction files (keep for development, exclude from VSIX)
+CLAUDE.md
+GEMINI.md
+
+# Nix development environment
+flake.nix
+flake.lock
+.envrc
+
+# GitHub workflows and settings
+.github/**
