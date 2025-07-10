@@ -2,7 +2,7 @@
   "name": "claude-code-usage-monitor",
   "displayName": "Claude Code Usage Monitor",
   "description": "A VS Code extension for tracking Claude Code usage",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "usabarashi",
   "license": "MIT",
   "repository": {
