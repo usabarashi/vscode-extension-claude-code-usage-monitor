@@ -24,12 +24,8 @@ jobs:
           trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           connect-timeout = 5
           stalled-download-timeout = 90
-
-    - name: Setup Cachix
-      uses: cachix/cachix-action@ad2ddac53f961de1989924296a1f236fcfbaa4fc # v15
-      with:
-        name: community
-        skipPush: true
+          max-jobs = auto
+          cores = 0
 
     - name: Build with Nix
       timeout-minutes: 15
