@@ -20,13 +20,26 @@ jobs:
       uses: cachix/install-nix-action@f0fe604f8a612776892427721526b4c7cfb23aba # v31.4.1
       with:
         nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          substituters = https://cache.nixos.org
+          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          connect-timeout = 5
+          stalled-download-timeout = 90
+
+    - name: Setup Cachix
+      uses: cachix/cachix-action@ad2ddac53f961de1989924296a1f236fcfbaa4fc # v15
+      with:
+        name: community
+        skipPush: true
 
     - name: Build with Nix
+      timeout-minutes: 15
       run: |
         nix develop --command npm ci
         nix develop --command npm run compile
 
     - name: Package extension
+      timeout-minutes: 10
       run: nix develop --command vsce package --out "claude-code-usage-monitor-${{ github.ref_name }}.vsix"
 
     - name: Create Release
