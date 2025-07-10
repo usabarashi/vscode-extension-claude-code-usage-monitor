@@ -40,6 +40,7 @@ export interface SessionWindow {
     requestCount: number;
     isActive: boolean;
     timeUntilReset: number;
+    mostUsedModel?: string;
 }
 
 export interface MultiSessionBlock {
@@ -65,6 +66,7 @@ export interface UsageStatus {
     usageLevel: 'low' | 'normal' | 'high' | 'critical';
     baselineConfidence: 'high' | 'medium' | 'low';
     burnRate?: BurnRateAnalysis;
+    currentModel?: string;
     error?: ParseError;
 }
 
