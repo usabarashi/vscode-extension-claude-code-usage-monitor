@@ -14,6 +14,7 @@
 
 import { SessionWindow, MultiSessionBlock, ClaudeUsageRecord, ParseError } from '../types';
 import { calculateTokenUsage } from './usageCalculator';
+import { getMostUsedModel } from './modelUtils';
 
 /** Claude Code session duration in milliseconds (5 hours) */
 const SESSION_DURATION_MS = 5 * 60 * 60 * 1000;
@@ -159,14 +160,12 @@ const createSessionFromBlock = (
     const endTime = new Date(startTime.getTime() + SESSION_DURATION_MS);
     const lastRecord = records[records.length - 1];
     const actualEndTime = lastRecord ? new Date(lastRecord.timestamp) : startTime;
-
     const isActive =
         (currentTime.getTime() - actualEndTime.getTime() < SESSION_DURATION_MS) &&
         (currentTime.getTime() <= endTime.getTime());
-
     const tokenUsage = calculateTokenUsage(records);
-
     const timeUntilReset = Math.max(0, endTime.getTime() - currentTime.getTime());
+    const mostUsedModel = records.length > 0 ? getMostUsedModel(records) : undefined;
 
     return {
         sessionId: startTime.toISOString(),
@@ -181,7 +180,8 @@ const createSessionFromBlock = (
         totalTokens: tokenUsage.totalTokens,
         requestCount: tokenUsage.requestCount,
         isActive,
-        timeUntilReset
+        timeUntilReset,
+        mostUsedModel
     };
 };
 

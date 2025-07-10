@@ -6,6 +6,7 @@
 import { UsageStatus } from '../types';
 import { formatBurnRate, formatPredictionTime } from '../core/burnRateCalculator';
 import { RateLimitEstimationService } from '../services/rateLimitEstimationService';
+import { getModelDisplayName } from '../core/modelUtils';
 
 /**
  * Creates status bar text with usage percentage, rate limit, and reset time.
@@ -23,7 +24,13 @@ export const getStatusBarText = (status: UsageStatus, rateLimitEstimate: number)
         minute: '2-digit'
     });
 
-    return `$(terminal) ${percentage}% | ${rateLimitFormatted} | ${resetTime}`;
+    const modelDisplay = status.currentModel ? getModelDisplayName(status.currentModel) : '';
+    
+    if (modelDisplay) {
+        return `$(terminal) ${modelDisplay} | ${percentage}% | ${rateLimitFormatted} | ${resetTime}`;
+    } else {
+        return `$(terminal) ${percentage}% | ${rateLimitFormatted} | ${resetTime}`;
+    }
 };
 
 /**

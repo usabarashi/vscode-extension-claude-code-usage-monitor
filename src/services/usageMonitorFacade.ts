@@ -116,7 +116,8 @@ export class UsageMonitorFacade {
             baselineDescription: formatBaselineDescription(baseline),
             usageLevel,
             baselineConfidence: baseline.confidence,
-            burnRate
+            burnRate,
+            currentModel: session.mostUsedModel
         };
     }
 
