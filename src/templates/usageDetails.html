@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h2 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--vscode-widget-border);
+            padding-bottom: 10px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .label {
+            font-weight: bold;
+            color: var(--vscode-textLink-foreground);
+        }
+        .value {
+            margin-left: 5px;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: var(--vscode-inputValidation-infoBackground);
+            border: 1px solid var(--vscode-inputValidation-infoBorder);
+        }
+        .status.critical {
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border-color: var(--vscode-inputValidation-errorBorder);
+        }
+        .status.warning {
+            background-color: var(--vscode-inputValidation-warningBackground);
+            border-color: var(--vscode-inputValidation-warningBorder);
+        }
+    </style>
+</head>
+<body>
+    <h2>Claude Code Usage Details</h2>
+    
+    <div class="section">
+        <div><span class="label">Current Usage:</span><span class="value">{{currentUsage}}</span></div>
+        <div><span class="label">Usage Level:</span><span class="value">{{usageLevel}}</span></div>
+        <div><span class="label">Baseline Confidence:</span><span class="value">{{baselineConfidence}}</span></div>
+    </div>
+
+    <div class="section">
+        <div><span class="label">Reset Time:</span><span class="value">{{resetTime}}</span></div>
+        <div><span class="label">Time Until Reset:</span><span class="value">{{timeUntilReset}}</span></div>
+        <div><span class="label">Consumption Rate:</span><span class="value">{{consumptionRate}}/min</span></div>
+        {{#if burnRate}}
+        <div><span class="label">Burn Rate:</span><span class="value">{{burnRate}}</span></div>
+        {{/if}}
+        {{#if topModel}}
+        <div><span class="label">Top Model:</span><span class="value">{{topModel}}</span></div>
+        {{/if}}
+        {{#if estimatedHighUsage}}
+        <div><span class="label">Estimated High Usage:</span><span class="value">{{estimatedHighUsage}}</span></div>
+        {{/if}}
+        {{#if estimatedDepletion}}
+        <div><span class="label">Estimated Depletion:</span><span class="value">{{estimatedDepletion}}</span></div>
+        {{/if}}
+    </div>
+
+    <div class="status {{statusClass}}">
+        <strong>Status:</strong> {{statusEmoji}} {{statusText}}
+    </div>
+</body>
+</html>
