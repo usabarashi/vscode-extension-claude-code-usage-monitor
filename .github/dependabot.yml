@@ -5,6 +5,8 @@ updates:
     schedule:
       interval: "monthly"
     target-branch: "develop"
+    ignore:
+      - dependency-name: "@types/vscode"
 
   - package-ecosystem: "github-actions"
     directory: "/"
